@@ -1,6 +1,7 @@
 const validator = require('validator');
+
 const cleanUpandValidate = async ({name, username, password, email})=>{
-    console.log({name, username, password, email});
+
     return new Promise((resolve,reject)=>{
         if(typeof(name) != 'string')
             reject('Invalid name');
@@ -14,7 +15,7 @@ const cleanUpandValidate = async ({name, username, password, email})=>{
         if(!name || !username || !password || !email)
             reject("Missing Data");
 
-        if(!validator.isemail(email))
+        if(!validator.isEmail(email))
             reject("Invalid email");
 
         if(username.length < 3)
