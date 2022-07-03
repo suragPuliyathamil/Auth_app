@@ -3,6 +3,8 @@ const express = require("express")
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const validator = require('validator');
+const session = require('express-session'); //Session in client
+const MongoDBSession = require('connect-mongodb-session')(session); //Session in server
 
 // Importing Utilities
 const { cleanUpandValidate } = require('./utils/authUtils');
@@ -18,6 +20,18 @@ app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.set('view engine','ejs');
 
+const databaseSession = new MongoDBSession({
+    url: uri,
+    collection : 'sessionData'
+})
+
+app.use(session({
+    secret:"Hello World",
+    resave:false,
+    saveUninitialized:false,
+    store:databaseSession
+}))
+
 mongoose.connect(uri, {
     useNewUrlParser: true,
     useUnifiedTopology: true
@@ -31,8 +45,12 @@ app.listen(PORT,()=>{
     console.log(`Running server on ${PORT}`)
 })
 
-app.get('/',(req,res)=>{
-    return res.send("Homepage ")
+app.get('/home',(req,res)=>{
+    console.log(req.session)
+    if(req.session.isAuth)
+        return res.send("Welcome to the homepage. Congrats you are logged in");
+    else
+        return res.send("You are not authorized to view this page");
 })
 
 app.get('/login',async (req,res)=>{
@@ -51,7 +69,7 @@ app.post('/login',async (req,res)=>{
              data = await formSchema.findOne({email:loginId});
         }
         else{
-             data = await formSchema.findOne({username:loginId});
+            data = await formSchema.findOne({username:loginId});
         }
 
         if(data=={}){
@@ -64,12 +82,17 @@ app.post('/login',async (req,res)=>{
         console.log(data)
 
         const isMatch = await bcrypt.compare(password,data.password);
+        req.session.isAuth= true;
+        req.session.user = {username:data.username,email:data.email};
+
         if(!isMatch){
-                return res.send({
-                    status:200,
-                    message : "Login Successfull",
-                    data : data
-                })
+                // return res.send({
+                //     status:200,
+                //     message : "Login Successfull",
+                //     data : data
+                // })
+
+                return res.redirect('/home');
         }
         else{
                 return res.send({
@@ -113,11 +136,28 @@ app.post('/register',async (req,res)=>{
             })
         };
 
+        let dbusername = await formSchema.findOne({username});
+        let dbemail = await formSchema.findOne({email});
+        if(dbusername){
+            return res.send({
+                status:400,
+                message: "Username already exists",
+                error: {}
+            })
+        }
+        if(dbemail){
+            return res.send({
+                status:400,
+                message: "Email already exists",
+                error: {}
+            })
+        }
+
         const hashedPassword = await bcrypt.hash(password,5);
         let formData = new formSchema({name, username, password:hashedPassword, email});
         let formdb = await formData.save();
 
-        return res.send({
+        return res.send({ 
             status:200,
             message : "Registration Successfull",
             data : formdb

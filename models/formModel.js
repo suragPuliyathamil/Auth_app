@@ -8,7 +8,8 @@ const formModel = new schema({
     },
     username : {
         type : String,
-        required : true 
+        required : true,
+        unique : true 
     },
     password : {
         type : String,
@@ -16,7 +17,8 @@ const formModel = new schema({
     },
     email : {
         type : String,
-        required : false
+        required : false,
+        unique : true
     }
 })
 
