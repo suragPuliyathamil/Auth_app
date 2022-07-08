@@ -16,12 +16,23 @@ const {uri} = require('./privateConstants');
 const PORT =3000;
 const app = express();
 
+// middlewares - app.use(), app.get('/path',middleware1,middleware2,(req,res)=>{}) 
+
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.set('view engine','ejs');
 
+const isAuth = (req,res,next)  => {
+    if(req.session.isAuth)
+        next(); // calls the next middleware function 
+    else
+        res.send({
+            error : "You are not authorized to access this page"
+        })
+}
+
 const databaseSession = new MongoDBSession({
-    url: uri,
+    uri: uri,
     collection : 'sessionData'
 })
 
@@ -45,16 +56,50 @@ app.listen(PORT,()=>{
     console.log(`Running server on ${PORT}`)
 })
 
-app.get('/home',(req,res)=>{
+app.get('/',(req,res)=>{
+    res.send("Welcome to the App");
+})
+
+app.get('/home',isAuth,(req,res)=>{
     console.log(req.session)
-    if(req.session.isAuth)
-        return res.send("Welcome to the homepage. Congrats you are logged in");
-    else
-        return res.send("You are not authorized to view this page");
+    console.log(req.session.id)
+    res.send(`
+        <html>
+            <head>
+                <title>Homepage</title>
+            </head>
+            <body>
+                <h1>Welcome to homepage</h1>
+                <form action="/logout" method=POST>
+                    <button type="submit">Logout</button>
+                </form>
+
+                <form action="/dashboard" method=GET>
+                    <button type="submit">Dashboard</button>
+                </form>
+
+            </body>
+        </html> 
+    `);
+})
+
+app.get('/dashboard',isAuth,(req,res)=>{
+    console.log(req.session)
+    res.send("Welcome to the dashboard. All your data insights are here");
 })
 
 app.get('/login',async (req,res)=>{
     return res.render('login')
+})
+
+app.post('/logout', async (req,res)=>{
+    
+    req.session.destroy((err)=>{
+        if(err) throw err;
+
+        res.redirect('/')
+    });
+   
 })
 
 app.get('/register',async (req,res)=>{
