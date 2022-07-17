@@ -127,16 +127,16 @@ app.post('/login',async (req,res)=>{
         console.log(data)
 
         const isMatch = await bcrypt.compare(password,data.password);
-        req.session.isAuth= true;
-        req.session.user = {username:data.username,email:data.email};
+        
 
-        if(!isMatch){
+        if(isMatch){
                 // return res.send({
                 //     status:200,
                 //     message : "Login Successfull",
                 //     data : data
                 // })
-
+                req.session.isAuth= true;
+                req.session.user = {username:data.username,email:data.email};
                 return res.redirect('/home');
         }
         else{
